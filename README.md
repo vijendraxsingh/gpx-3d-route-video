@@ -39,8 +39,10 @@ attribution remains visible in exported frames.
 The export uses a moving, pitched satellite-flyover camera over available
 MapKit terrain imagery. Choose **Forward Follow (Recommended)**, **First
 Person**, or **Chase Camera** in the preview header. Camera views are captured
-four times per second and composed into 12 fps video. This simulates a moving
-map camera; it does not render an athlete, bicycle, or other sports equipment.
+for every frame of the 12 fps video, with route direction smoothed across
+nearby track points. This produces a more continuous moving-map perspective
+but takes longer to export. It does not render an athlete, bicycle, or other
+sports equipment.
 If MapKit cannot provide flyover imagery for a capture, export retries that
 view with satellite imagery.
 

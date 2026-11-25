@@ -36,7 +36,6 @@ enum VideoExporter {
         let width = 1280
         let height = 720
         let fps: Int32 = 12
-        let framesPerMapCapture = 3
         let duration = renderableActivities.reduce(0) { $0 + $1.videoDuration }
         let frameCount = max(1, Int(duration * Double(fps)))
         let preparedPhotos = photos.compactMap { photo -> PreparedPhoto? in
@@ -78,8 +77,6 @@ enum VideoExporter {
         defer { if writer.status == .writing { writer.cancelWriting() } }
         writer.startSession(atSourceTime: .zero)
 
-        var capturedMap: CapturedMap?
-        var previousActivityID: UUID?
         for frame in 0..<frameCount {
             try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
@@ -105,54 +102,54 @@ enum VideoExporter {
             let cameraDistance = min(activity.distance, targetDistance + cameraStyle.lookAhead)
             let routePosition = position(on: activity.points, at: targetDistance)
             let cameraPosition = position(on: activity.points, at: cameraDistance)
-            let needsCapture = capturedMap == nil
-                || previousActivityID != activity.id
-                || frame % framesPerMapCapture == 0
-            if needsCapture {
-                let captureIndex = frame / framesPerMapCapture + 1
-                let captureCount = (frameCount + framesPerMapCapture - 1) / framesPerMapCapture
-                progress(
-                    0.02 + 0.03 * Double(frame) / Double(frameCount),
-                    "Capturing 3D terrain view \(captureIndex) of about \(captureCount)…"
-                )
-                let bearing = heading(from: cameraPosition.coordinate, to: position(
-                    on: activity.points,
-                    at: min(activity.distance, cameraDistance + 50)
-                ).coordinate)
-                let mapSnapshot = try await snapshot(
-                    center: cameraPosition.coordinate,
-                    heading: bearing,
-                    cameraStyle: cameraStyle,
-                    width: width,
-                    height: height
-                )
-                guard let image = mapSnapshot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-                    throw ExportError.cannotCreateSnapshot
-                }
-                capturedMap = CapturedMap(
-                    activity: activity,
-                    mapImage: image,
-                    routePoints: activity.points.map { point in
-                        let mapPoint = mapSnapshot.point(for: point.coordinate)
-                        return CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
-                    }
-                )
-                previousActivityID = activity.id
-            }
-            guard let capturedMap else { throw ExportError.cannotCreateSnapshot }
-            let cameraPoint = interpolatedMapPoint(
-                in: capturedMap.routePoints,
-                routeIndex: cameraPosition.index,
-                fraction: cameraPosition.fraction
-            )
             let visibleRouteIndex = min(
                 activity.points.count,
                 routePosition.index + (routePosition.fraction > 0 ? 2 : 1)
             )
+            progress(
+                0.05 + 0.94 * Double(frame) / Double(frameCount),
+                "Capturing moving terrain view \(frame + 1) of \(frameCount)…"
+            )
+            let bearingStart = position(
+                on: activity.points,
+                at: max(0, cameraDistance - 60)
+            )
+            let bearingEnd = position(
+                on: activity.points,
+                at: min(activity.distance, cameraDistance + 180)
+            )
+            let bearing = heading(from: bearingStart.coordinate, to: bearingEnd.coordinate)
+            let mapSnapshot = try await snapshot(
+                center: cameraPosition.coordinate,
+                heading: bearing,
+                cameraStyle: cameraStyle,
+                width: width,
+                height: height
+            )
+            guard let image = mapSnapshot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                throw ExportError.cannotCreateSnapshot
+            }
+            let routeStride = max(1, visibleRouteIndex / 1_500)
+            var routePoints = stride(from: 0, to: visibleRouteIndex, by: routeStride).map { index in
+                let mapPoint = mapSnapshot.point(for: activity.points[index].coordinate)
+                return CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+            }
+            let lastIndex = visibleRouteIndex - 1
+            if visibleRouteIndex > 0, lastIndex % routeStride != 0 {
+                let mapPoint = mapSnapshot.point(for: activity.points[lastIndex].coordinate)
+                routePoints.append(CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y))
+            }
+            let capturedMap = CapturedMap(
+                activity: activity,
+                mapImage: image,
+                routePoints: routePoints
+            )
+            let cameraMapPoint = mapSnapshot.point(for: cameraPosition.coordinate)
+            let cameraPoint = CGPoint(x: cameraMapPoint.x, y: CGFloat(height) - cameraMapPoint.y)
             guard let buffer = makePixelBuffer(
                 capturedMap: capturedMap,
                 cameraPoint: cameraPoint,
-                visiblePointCount: visibleRouteIndex,
+                visiblePointCount: routePoints.count,
                 visibleDistance: targetDistance,
                 photos: preparedPhotos,
                 width: width,

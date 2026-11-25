@@ -53,10 +53,12 @@ the camera reaches their matched route location.
 - Export duration is initially estimated from route distance, then adjustable
   per route from 10 seconds to 10 minutes. Total export length is the sum of
   route durations; longer videos take longer to render.
-- Export now captures pitched terrain/flyover views several times per second
-  and composes video at 12 fps. Capture speed and 3D imagery coverage depend on
-  MapKit, network access, and location; validate quality, attribution, and
-  provider usage terms before public release.
+- Export captures a new pitched terrain/flyover view for every 12 fps video
+  frame and smooths camera direction across nearby route points. This avoids
+  panning across stale keyframe snapshots at the cost of more MapKit requests.
+  Capture speed and 3D imagery coverage depend on MapKit, network access, and
+  location; validate quality, attribution, and provider usage terms before
+  public release.
 - Export retries an unavailable flyover capture with satellite imagery, and
   reports a visible failure status if MapKit cannot provide either map view.
 - The camera simulates an athlete's route perspective, but does not render a
