@@ -6,11 +6,31 @@ import UniformTypeIdentifiers
 
 @main
 struct RouteVideoApp: App {
+    @NSApplicationDelegateAdaptor(RouteStudioAppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .frame(minWidth: 980, minHeight: 680)
         }
+    }
+}
+
+final class RouteStudioAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows {
+            sender.windows.first?.makeKeyAndOrderFront(nil)
+        }
+        sender.activate(ignoringOtherApps: true)
+        return true
     }
 }
 
