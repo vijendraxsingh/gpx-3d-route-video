@@ -41,9 +41,15 @@ See the [product and engineering plan](./docs/PLAN.md) for the broader roadmap.
 
 ## License
 
-This source is available under the custom RouteStudio Community and Revenue
-Share License in [`LICENSE`](./LICENSE). Non-commercial use is permitted under
-its terms. Commercial use requires reporting and payment of 10% of gross
-revenue quarterly; see the license for definitions, conditions, and reporting
-requirements. This is not an OSI-approved open-source license, and the license
-text should receive legal review before commercial release.
+The source code and documentation in this repository are licensed under
+[Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC
+4.0)](https://creativecommons.org/licenses/by-nc/4.0/); see [`LICENSE`](./LICENSE).
+It requires attribution and does not permit commercial use under the license.
+It is not an OSI-approved open-source license.
+
+Creative Commons advises against applying its licenses to software. This
+choice follows the project owner's request; CC BY-NC is not software-specific
+and does not provide the software-focused patent terms found in some software
+licenses. The license covers this repository's source and documentation, not
+users' GPX files, photographs, or videos they create with the app, nor
+third-party components and map data under their own terms.
