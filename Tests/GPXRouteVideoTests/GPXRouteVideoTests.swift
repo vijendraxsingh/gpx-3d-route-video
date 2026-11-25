@@ -88,6 +88,24 @@ final class GPXRouteVideoTests: XCTestCase {
         XCTAssertEqual(tooLong.videoDuration, RouteActivity.maximumVideoDuration)
     }
 
+    @MainActor
+    func testDefaultExportFilenameUsesFirstRouteName() {
+        let project = RouteProject()
+        XCTAssertEqual(project.defaultExportFilename, "route-video")
+
+        let point = RoutePoint(
+            coordinate: CLLocationCoordinate2D(latitude: 47, longitude: 8),
+            elevation: nil,
+            timestamp: nil
+        )
+        project.activities = [
+            RouteActivity(name: "morning-ride", sport: .cycling, points: [point]),
+            RouteActivity(name: "afternoon-hike", sport: .hiking, points: [point])
+        ]
+
+        XCTAssertEqual(project.defaultExportFilename, "morning-ride")
+    }
+
     func testCameraStylesIncludeThreePerspectivesWithForwardFollowAsRecommended() {
         XCTAssertEqual(
             CameraStyle.allCases,

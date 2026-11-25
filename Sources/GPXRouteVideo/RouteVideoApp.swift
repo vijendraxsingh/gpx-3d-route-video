@@ -50,6 +50,12 @@ final class RouteProject: ObservableObject {
     var totalVideoDuration: Double {
         activities.filter { $0.points.count > 1 }.reduce(0) { $0 + $1.videoDuration }
     }
+    var defaultExportFilename: String {
+        guard let firstActivity = activities.first, !firstActivity.name.isEmpty else {
+            return "route-video"
+        }
+        return firstActivity.name
+    }
 
     func importGPX(_ urls: [URL]) {
         var added = 0
@@ -195,7 +201,7 @@ struct ContentView: View {
             isPresented: $showExportPicker,
             document: EmptyVideoDocument(),
             contentType: UTType(filenameExtension: "mp4") ?? .mpeg4Movie,
-            defaultFilename: "route-video"
+            defaultFilename: project.defaultExportFilename
         ) { result in
             switch result {
             case .success(let url): project.export(to: url)

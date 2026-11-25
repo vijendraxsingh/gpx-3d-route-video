@@ -14,6 +14,8 @@ animated route video, with geotagged photos shown as upper-right overlays.
 - Adjust the matching radius and review matched/unmatched photos.
 - Set each route's video duration from 10 seconds to 10 minutes; the total
   export length is the sum of the route durations.
+- The MP4 save dialog defaults to the first imported GPX filename (or
+  `route-video` if no route is loaded).
 - Export one H.264 MP4 with pitched satellite-flyover camera views, each route
   in sequence, and photo picture-in-picture.
 
