@@ -117,11 +117,11 @@ enum VideoExporter {
             )
             let bearingStart = position(
                 on: activity.points,
-                at: max(0, cameraDistance - 300)
+                at: max(0, cameraDistance - 1_500)
             )
             let bearingEnd = position(
                 on: activity.points,
-                at: min(activity.distance, cameraDistance + 500)
+                at: min(activity.distance, cameraDistance + 1_500)
             )
             let bearing = heading(from: bearingStart.coordinate, to: bearingEnd.coordinate)
             let mapSnapshot = try await snapshot(
@@ -139,7 +139,7 @@ enum VideoExporter {
                 let mapPoint = mapSnapshot.point(for: activity.points[index].coordinate)
                 return ProjectedRoutePoint(
                     routeIndex: index,
-                    point: CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+                    point: mapPoint
                 )
             }
             let lastIndex = activity.points.count - 1
@@ -147,7 +147,7 @@ enum VideoExporter {
                 let mapPoint = mapSnapshot.point(for: activity.points[lastIndex].coordinate)
                 routePoints.append(ProjectedRoutePoint(
                     routeIndex: lastIndex,
-                    point: CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+                    point: mapPoint
                 ))
             }
             let capturedMap = CapturedMap(
@@ -155,11 +155,8 @@ enum VideoExporter {
                 mapImage: image,
                 routePoints: routePoints
             )
-            let cameraMapPoint = mapSnapshot.point(for: cameraPosition.coordinate)
-            let cameraPoint = CGPoint(x: cameraMapPoint.x, y: CGFloat(height) - cameraMapPoint.y)
             guard let buffer = makePixelBuffer(
                 capturedMap: capturedMap,
-                cameraPoint: cameraPoint,
                 visibleRouteIndex: visibleRouteIndex,
                 visibleDistance: targetDistance,
                 photos: preparedPhotos,
@@ -262,7 +259,6 @@ enum VideoExporter {
 
     private static func makePixelBuffer(
         capturedMap: CapturedMap,
-        cameraPoint: CGPoint,
         visibleRouteIndex: Int,
         visibleDistance: CLLocationDistance,
         photos: [PreparedPhoto],
@@ -286,13 +282,9 @@ enum VideoExporter {
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
         ) else { return nil }
-        let zoom: CGFloat = 1.35
         context.saveGState()
-        context.translateBy(
-            x: CGFloat(width) / 2 - cameraPoint.x * zoom,
-            y: CGFloat(height) * 0.68 - cameraPoint.y * zoom
-        )
-        context.scaleBy(x: zoom, y: zoom)
+        context.translateBy(x: 0, y: CGFloat(height))
+        context.scaleBy(x: 1, y: -1)
         context.draw(capturedMap.mapImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         if capturedMap.routePoints.count > 1 {
@@ -398,17 +390,6 @@ enum VideoExporter {
             longitude: start.coordinate.longitude + longitudeDelta * fraction
         )
         return RoutePosition(coordinate: coordinate, index: lower, fraction: fraction)
-    }
-
-    private static func interpolatedMapPoint(in points: [CGPoint], routeIndex: Int, fraction: Double) -> CGPoint {
-        guard !points.isEmpty else { return .zero }
-        guard routeIndex + 1 < points.count else { return points[points.count - 1] }
-        let start = points[routeIndex]
-        let end = points[routeIndex + 1]
-        return CGPoint(
-            x: start.x + (end.x - start.x) * fraction,
-            y: start.y + (end.y - start.y) * fraction
-        )
     }
 
     private static func heading(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> CLLocationDirection {

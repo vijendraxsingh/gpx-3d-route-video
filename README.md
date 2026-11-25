@@ -43,7 +43,9 @@ for every frame of the 12 fps video, with route direction smoothed across
 nearby track points. This produces a more continuous moving-map perspective
 but takes longer to export. It does not render an athlete, bicycle, or other
 sports equipment. The route is shown as a high-contrast line, with the
-traversed section highlighted in the activity color.
+traversed section highlighted in the activity color. Route overlays use the
+same MapKit snapshot coordinates as the map, and camera heading is calculated
+over a longer route segment to reduce rotation.
 If MapKit cannot provide flyover imagery for a capture, export retries that
 view with satellite imagery.
 
