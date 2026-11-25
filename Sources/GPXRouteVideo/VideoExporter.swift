@@ -5,20 +5,60 @@ import CoreText
 import MapKit
 
 enum VideoExporter {
+    private struct PreparedActivity {
+        let activity: RouteActivity
+        let mapImage: CGImage
+        let routePoints: [CGPoint]
+    }
+
+    private struct PreparedPhoto {
+        let activityID: UUID
+        let routeIndex: Int
+        let image: CGImage
+    }
+
     static func export(
         activities: [RouteActivity],
         photos: [GeoPhoto],
         matchingRadius: CLLocationDistance,
         to outputURL: URL,
-        progress: @escaping (Double) -> Void
+        progress: @escaping (Double, String) -> Void
     ) async throws {
         let renderableActivities = activities.filter { $0.points.count > 1 }
         guard !renderableActivities.isEmpty else { throw ImportError.noRoutePoints }
         let width = 1280
         let height = 720
-        let fps: Int32 = 30
-        let duration = renderableActivities.reduce(0) { $0 + $1.estimatedDuration }
+        let fps: Int32 = 24
+        let duration = renderableActivities.reduce(0) { $0 + $1.videoDuration }
         let frameCount = max(1, Int(duration * Double(fps)))
+
+        var preparedActivities: [PreparedActivity] = []
+        for (index, activity) in renderableActivities.enumerated() {
+            try Task.checkCancellation()
+            progress(0, "Loading map \(index + 1) of \(renderableActivities.count)…")
+            let mapSnapshot = try await snapshot(for: activity, width: width, height: height)
+            guard let image = mapSnapshot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                throw ExportError.cannotCreateSnapshot
+            }
+            let routePoints = activity.points.map { point -> CGPoint in
+                let mapPoint = mapSnapshot.point(for: point.coordinate)
+                return CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+            }
+            preparedActivities.append(PreparedActivity(
+                activity: activity,
+                mapImage: image,
+                routePoints: routePoints
+            ))
+        }
+        let preparedPhotos = photos.compactMap { photo -> PreparedPhoto? in
+            guard let activityID = photo.matchedActivityID,
+                  let routeIndex = photo.matchedRouteIndex,
+                  let activity = renderableActivities.first(where: { $0.id == activityID }),
+                  activity.points.indices.contains(routeIndex),
+                  (photo.matchDistance ?? .infinity) <= matchingRadius,
+                  let image = photo.image else { return nil }
+            return PreparedPhoto(activityID: activityID, routeIndex: routeIndex, image: image)
+        }
 
         if FileManager.default.fileExists(atPath: outputURL.path) {
             try FileManager.default.removeItem(at: outputURL)
@@ -52,44 +92,33 @@ enum VideoExporter {
         for frame in 0..<frameCount {
             try Task.checkCancellation()
             while !input.isReadyForMoreMediaData {
+                guard writer.status == .writing else {
+                    throw writer.error ?? ExportError.cannotAppendFrame
+                }
                 try await Task.sleep(for: .milliseconds(5))
             }
 
             let elapsed = Double(frame) / Double(fps)
             var activityStart = 0.0
-            var selected = renderableActivities[0]
+            var selected = preparedActivities[0]
             var localElapsed = 0.0
-            for activity in renderableActivities {
-                selected = activity
+            for prepared in preparedActivities {
+                selected = prepared
                 localElapsed = elapsed - activityStart
-                if localElapsed < activity.estimatedDuration { break }
-                activityStart += activity.estimatedDuration
+                if localElapsed < prepared.activity.videoDuration { break }
+                activityStart += prepared.activity.videoDuration
             }
-            let segmentProgress = min(1, max(0, localElapsed / selected.estimatedDuration))
-            let route = selected.points
-            let totalDistance = max(selected.distance, 1)
+            let activity = selected.activity
+            let segmentProgress = min(1, max(0, localElapsed / activity.videoDuration))
+            let route = activity.points
+            let totalDistance = max(activity.distance, 1)
             let targetDistance = totalDistance * segmentProgress
-            let routeIndex = route.firstIndex { $0.distanceFromStart >= targetDistance } ?? route.count - 1
-            let center = route[routeIndex].coordinate
-            let heading = routeIndex + 1 < route.count ? bearing(from: center, to: route[routeIndex + 1].coordinate) : 0
-            let cameraAltitude = max(2_000, min(80_000, totalDistance * 0.8))
-            let camera = MKMapCamera(
-                lookingAtCenter: center,
-                fromDistance: cameraAltitude,
-                pitch: 55,
-                heading: heading
-            )
-            let mapSnapshot = try await snapshot(camera: camera, width: width, height: height)
+            let routeIndex = upperBound(in: route, distance: targetDistance)
             guard let buffer = makePixelBuffer(
-                snapshot: mapSnapshot,
-                route: route,
+                prepared: selected,
+                visiblePointCount: routeIndex,
                 visibleDistance: targetDistance,
-                activityID: selected.id,
-                routeColor: selected.sport.color.cgColor,
-                photoOverlayDistance: selected.sport.estimatedSpeed * 8,
-                activityTitle: "\(selected.sport.title) - \(selected.name)",
-                photos: photos,
-                matchingRadius: matchingRadius,
+                photos: preparedPhotos,
                 width: width,
                 height: height,
                 adaptor: adaptor
@@ -101,9 +130,11 @@ enum VideoExporter {
             guard adaptor.append(buffer, withPresentationTime: time) else {
                 throw writer.error ?? ExportError.cannotAppendFrame
             }
-            progress(Double(frame + 1) / Double(frameCount))
+            let fraction = Double(frame + 1) / Double(frameCount)
+            progress(0.05 + fraction * 0.94, "Rendering video… \(Int(fraction * 100))%")
         }
 
+        progress(0.99, "Finalizing MP4…")
         input.markAsFinished()
         await withCheckedContinuation { continuation in
             writer.finishWriting { continuation.resume() }
@@ -113,35 +144,52 @@ enum VideoExporter {
         }
     }
 
-    private static func snapshot(camera: MKMapCamera, width: Int, height: Int) async throws -> MKMapSnapshotter.Snapshot {
+    private static func snapshot(
+        for activity: RouteActivity,
+        width: Int,
+        height: Int
+    ) async throws -> MKMapSnapshotter.Snapshot {
+        let coordinates = activity.points.map(\.coordinate)
+        let routeRect = coordinates.reduce(MKMapRect.null) { rect, coordinate in
+            let point = MKMapPoint(coordinate)
+            return rect.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
+        }
+        let aspectRatio = Double(width) / Double(height)
+        let mapWidth = max(max(routeRect.width, routeRect.height * aspectRatio), 1_000)
+        let mapHeight = max(max(routeRect.height, routeRect.width / aspectRatio), 1_000)
+        let paddedRect = MKMapRect(
+            x: routeRect.midX - mapWidth * 2.5,
+            y: routeRect.midY - mapHeight * 2.5,
+            width: mapWidth * 5,
+            height: mapHeight * 5
+        )
         let options = MKMapSnapshotter.Options()
-        options.camera = camera
+        options.region = MKCoordinateRegion(paddedRect)
         options.size = CGSize(width: width, height: height)
         options.mapType = .standard
         let snapshotter = MKMapSnapshotter(options: options)
-        return try await withCheckedThrowingContinuation { continuation in
-            snapshotter.start { snapshot, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else if let snapshot {
-                    continuation.resume(returning: snapshot)
-                } else {
-                    continuation.resume(throwing: ExportError.cannotCreateSnapshot)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                snapshotter.start { snapshot, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if let snapshot {
+                        continuation.resume(returning: snapshot)
+                    } else {
+                        continuation.resume(throwing: ExportError.cannotCreateSnapshot)
+                    }
                 }
             }
+        } onCancel: {
+            snapshotter.cancel()
         }
     }
 
     private static func makePixelBuffer(
-        snapshot: MKMapSnapshotter.Snapshot,
-        route: [RoutePoint],
+        prepared: PreparedActivity,
+        visiblePointCount: Int,
         visibleDistance: CLLocationDistance,
-        activityID: UUID,
-        routeColor: CGColor,
-        photoOverlayDistance: CLLocationDistance,
-        activityTitle: String,
-        photos: [GeoPhoto],
-        matchingRadius: CLLocationDistance,
+        photos: [PreparedPhoto],
         width: Int,
         height: Int,
         adaptor: AVAssetWriterInputPixelBufferAdaptor
@@ -162,34 +210,44 @@ enum VideoExporter {
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue
         ) else { return nil }
-        guard let mapImage = snapshot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return nil
-        }
-        context.draw(mapImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let cameraIndex = min(max(visiblePointCount - 1, 0), prepared.routePoints.count - 1)
+        let cameraPoint = prepared.routePoints[cameraIndex]
+        let zoom: CGFloat = 2.2
+        context.saveGState()
+        context.translateBy(
+            x: CGFloat(width) / 2 - cameraPoint.x * zoom,
+            y: CGFloat(height) / 2 - cameraPoint.y * zoom
+        )
+        context.scaleBy(x: zoom, y: zoom)
+        context.draw(prepared.mapImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
-        let visiblePoints = route.prefix { $0.distanceFromStart <= visibleDistance }
-        if visiblePoints.count > 1 {
-            context.setStrokeColor(routeColor)
+        if visiblePointCount > 1 {
+            context.setStrokeColor(prepared.activity.sport.color.cgColor)
             context.setLineWidth(7)
             context.setLineCap(.round)
             context.setLineJoin(.round)
             context.beginPath()
-            for (index, point) in visiblePoints.enumerated() {
-                let mapPoint = snapshot.point(for: point.coordinate)
-                let pointInMap = CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
-                if index == 0 { context.move(to: pointInMap) }
-                else { context.addLine(to: pointInMap) }
+            let pointStride = max(1, prepared.routePoints.count / 1_500)
+            for index in stride(from: 0, to: visiblePointCount, by: pointStride) {
+                let point = prepared.routePoints[index]
+                if index == 0 { context.move(to: point) }
+                else { context.addLine(to: point) }
+            }
+            if (visiblePointCount - 1) % pointStride != 0 {
+                context.addLine(to: prepared.routePoints[visiblePointCount - 1])
             }
             context.strokePath()
         }
+        context.restoreGState()
 
         if let photo = photos.first(where: { photo in
-            guard photo.matchedActivityID == activityID,
-                  let index = photo.matchedRouteIndex, let distance = photo.matchDistance,
-                  distance <= matchingRadius else { return false }
-            return route[index].distanceFromStart <= visibleDistance
-                && visibleDistance - route[index].distanceFromStart < photoOverlayDistance
-        }), let image = photo.image {
+            guard photo.activityID == prepared.activity.id else { return false }
+            let photoDistance = prepared.activity.points[photo.routeIndex].distanceFromStart
+            let overlayDistance = prepared.activity.distance / prepared.activity.videoDuration * 3
+            return photoDistance <= visibleDistance
+                && visibleDistance - photoDistance < overlayDistance
+        }) {
+            let image = photo.image
             let box = CGRect(x: width - 330, y: height - 240, width: 300, height: 210)
             context.setFillColor(NSColor.black.withAlphaComponent(0.65).cgColor)
             context.fill(box.insetBy(dx: -6, dy: -6))
@@ -204,7 +262,7 @@ enum VideoExporter {
             context.draw(image, in: destination)
         }
         let title = NSAttributedString(
-            string: activityTitle,
+            string: "\(prepared.activity.sport.title) - \(prepared.activity.name)",
             attributes: [
                 .font: NSFont.systemFont(ofSize: 22, weight: .semibold),
                 .foregroundColor: NSColor.white
@@ -218,13 +276,18 @@ enum VideoExporter {
         return buffer
     }
 
-    private static func bearing(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> CLLocationDirection {
-        let lat1 = start.latitude * .pi / 180
-        let lat2 = end.latitude * .pi / 180
-        let deltaLongitude = (end.longitude - start.longitude) * .pi / 180
-        let y = sin(deltaLongitude) * cos(lat2)
-        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLongitude)
-        return atan2(y, x) * 180 / .pi
+    private static func upperBound(in route: [RoutePoint], distance: CLLocationDistance) -> Int {
+        var lower = 0
+        var upper = route.count
+        while lower < upper {
+            let middle = (lower + upper) / 2
+            if route[middle].distanceFromStart <= distance {
+                lower = middle + 1
+            } else {
+                upper = middle
+            }
+        }
+        return max(1, lower)
     }
 }
 

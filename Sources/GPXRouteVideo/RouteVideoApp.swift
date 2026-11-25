@@ -100,6 +100,7 @@ final class RouteProject: ObservableObject {
         guard !isExporting else { return }
         isExporting = true
         exportProgress = 0
+        status = "Preparing video export…"
         Task {
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
@@ -109,8 +110,11 @@ final class RouteProject: ObservableObject {
                     photos: photos,
                     matchingRadius: matchingRadius,
                     to: url
-                ) { value in
-                    Task { @MainActor in self.exportProgress = value }
+                ) { value, message in
+                    Task { @MainActor in
+                        self.exportProgress = value
+                        self.status = message
+                    }
                 }
                 status = "Exported video to \(url.path)."
             } catch {
@@ -361,8 +365,12 @@ struct ContentView: View {
     private var footer: some View {
         HStack(spacing: 12) {
             if project.isExporting {
-                ProgressView(value: project.exportProgress).frame(width: 140)
-                Text("Rendering \(Int(project.exportProgress * 100))%")
+                if project.exportProgress == 0 {
+                    ProgressView().controlSize(.small)
+                } else {
+                    ProgressView(value: project.exportProgress).frame(width: 140)
+                }
+                Text(project.status).lineLimit(1)
             } else {
                 Text(project.status).lineLimit(1)
             }
@@ -381,16 +389,16 @@ struct ContentView: View {
         guard !project.activities.isEmpty else {
             return MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), distance: 50_000, heading: 0, pitch: 55)
         }
-        let totalDuration = project.activities.reduce(0) { $0 + $1.estimatedDuration }
+        let totalDuration = project.activities.reduce(into: 0.0) { $0 += $1.videoDuration }
         var elapsedBeforeActivity = 0.0
         var selected = project.activities[0]
         var localProgress = 0.0
         for activity in project.activities {
             selected = activity
             let localElapsed = totalDuration * progress - elapsedBeforeActivity
-            localProgress = min(1, max(0, localElapsed / activity.estimatedDuration))
-            if localElapsed <= activity.estimatedDuration { break }
-            elapsedBeforeActivity += activity.estimatedDuration
+            localProgress = min(1, max(0, localElapsed / activity.videoDuration))
+            if localElapsed <= activity.videoDuration { break }
+            elapsedBeforeActivity += activity.videoDuration
         }
         let localDistance = selected.distance * localProgress
         let index = selected.points.firstIndex { $0.distanceFromStart >= localDistance } ?? selected.points.count - 1

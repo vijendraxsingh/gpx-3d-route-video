@@ -40,7 +40,8 @@ attribution remains visible in exported frames.
 - Photo matching is nearest-point based, and the 3D camera preview/export use
   MapKit's available map snapshots.
 - Video duration is estimated from route distance; there are no output quality
-  controls yet.
+  controls yet. Each route is capped at one minute, and map imagery is fetched
+  once per route before local frame rendering begins.
 - Projects are not persisted between launches.
 
 See the [product and engineering plan](./docs/PLAN.md) for the broader roadmap.

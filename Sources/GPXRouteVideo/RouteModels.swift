@@ -30,16 +30,6 @@ enum Sport: String, CaseIterable, Identifiable {
         }
     }
 
-    var estimatedSpeed: CLLocationDistance {
-        switch self {
-        case .cycling: 5.5
-        case .hiking: 1.1
-        case .running: 2.8
-        case .trailRunning: 1.8
-        case .swimming: 1.0
-        }
-    }
-
     var color: NSColor {
         switch self {
         case .cycling: .systemBlue
@@ -58,7 +48,7 @@ struct RouteActivity: Identifiable {
     let points: [RoutePoint]
 
     var distance: CLLocationDistance { points.last?.distanceFromStart ?? 0 }
-    var estimatedDuration: Double { max(6, distance / sport.estimatedSpeed) }
+    var videoDuration: Double { max(10, min(60, 10 + distance / 300)) }
 }
 
 struct GeoPhoto: Identifiable {

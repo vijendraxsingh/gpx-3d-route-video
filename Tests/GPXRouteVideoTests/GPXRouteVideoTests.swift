@@ -32,4 +32,29 @@ final class GPXRouteVideoTests: XCTestCase {
 
         XCTAssertThrowsError(try GPXParser.parse(url: file))
     }
+
+    func testVideoDurationStaysWithinPreviewBounds() {
+        let shortRoute = RouteActivity(
+            name: "short",
+            sport: .cycling,
+            points: [RoutePoint(
+                coordinate: CLLocationCoordinate2D(latitude: 47, longitude: 8),
+                elevation: nil,
+                timestamp: nil
+            )]
+        )
+        let longRoute = RouteActivity(
+            name: "long",
+            sport: .hiking,
+            points: [RoutePoint(
+                coordinate: CLLocationCoordinate2D(latitude: 47, longitude: 8),
+                elevation: nil,
+                timestamp: nil,
+                distanceFromStart: 100_000
+            )]
+        )
+
+        XCTAssertEqual(shortRoute.videoDuration, 10)
+        XCTAssertEqual(longRoute.videoDuration, 60)
+    }
 }
