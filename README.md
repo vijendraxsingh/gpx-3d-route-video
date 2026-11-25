@@ -38,3 +38,12 @@ visible in exported frames.
 - Projects are not persisted between launches.
 
 See the [product and engineering plan](./docs/PLAN.md) for the broader roadmap.
+
+## License
+
+This source is available under the custom RouteStudio Community and Revenue
+Share License in [`LICENSE`](./LICENSE). Non-commercial use is permitted under
+its terms. Commercial use requires reporting and payment of 10% of gross
+revenue quarterly; see the license for definitions, conditions, and reporting
+requirements. This is not an OSI-approved open-source license, and the license
+text should receive legal review before commercial release.

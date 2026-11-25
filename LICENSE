@@ -1,0 +1,117 @@
+RouteStudio Community and Revenue Share License
+Version 1.0, November 25, 2026
+
+Copyright (c) 2026 RouteStudio contributors
+
+IMPORTANT: This is a custom, source-available license, not an
+OSI-approved open-source license. It is a draft license text and is not
+legal advice. Obtain legal review before relying on it for a commercial
+product.
+
+1. Definitions
+
+"Software" means this source code, its documentation, and any modified
+version or derivative work of them that is distributed under this License.
+Software does not include third-party components, which remain subject to
+their own licenses.
+
+"You" means the individual or legal entity exercising rights under this
+License. If You accept on behalf of an entity, You represent that You have
+authority to bind it.
+
+"Commercial Use" means using, modifying, distributing, hosting, or making
+the Software available in connection with a business or other activity
+intended primarily for commercial advantage or monetary compensation.
+Examples include selling or licensing the Software; offering it as a paid
+product, hosted service, or subscription; using it to provide paid services;
+and monetizing products or content generated with it. Internal business use
+is Commercial Use even if it does not itself generate separately identifiable
+revenue.
+
+"Gross Revenue" means all amounts invoiced, earned, or received by You or
+Your affiliates from Commercial Use of the Software, including sales,
+subscriptions, license fees, service fees, advertising, sponsorships, and
+other monetization. For a bundle or combined offering, Gross Revenue includes
+the portion reasonably attributable to the Software, determined in good
+faith using a consistent allocation method. Gross Revenue excludes sales,
+value-added, and similar transaction taxes collected for and remitted to a
+government, and amounts actually refunded to customers or charged back.
+
+"Licensor" means the copyright holder(s) of the Software who offer this
+License.
+
+2. Non-commercial permission
+
+Subject to this License, Licensor grants You a worldwide, non-exclusive,
+royalty-free, non-transferable license to use, reproduce, modify, and
+distribute the Software for personal, educational, research, evaluation, and
+other non-commercial purposes.
+
+When You distribute the Software or a modified version for a non-commercial
+purpose, You must:
+
+  a. include this License and preserve applicable copyright and attribution
+     notices;
+  b. identify files You have modified; and
+  c. license the Software and those modifications under this License.
+
+You may not remove or alter this License's commercial-use and revenue-share
+requirements.
+
+3. Commercial use and revenue share
+
+The permission in Section 2 does not authorize Commercial Use. Commercial
+Use is permitted only while You comply with all of the following conditions:
+
+  a. You owe Licensor a revenue share equal to ten percent (10%) of Gross
+     Revenue for each calendar quarter in which You make Commercial Use;
+  b. within thirty (30) days after the end of each calendar quarter, You
+     provide Licensor a written report stating the Gross Revenue calculation
+     and pay the corresponding revenue share. If Gross Revenue is zero, You
+     must still submit a zero-revenue report;
+  c. You keep complete records reasonably sufficient to verify each report
+     for at least three (3) years and, on reasonable written notice no more
+     than once per year, allow Licensor or an independent auditor bound by
+     confidentiality to inspect those records. An underpayment exceeding
+     five percent (5%) for an audited period must be promptly paid, together
+     with reasonable audit costs; and
+  d. You contact Licensor before beginning Commercial Use to agree in writing
+     on payment details and a reporting contact. This administrative step
+     does not change the ten percent share or quarterly deadlines.
+
+If You cannot or do not agree to these conditions, You must not make
+Commercial Use of the Software. Licensor may offer a separate written
+commercial license; no such license is granted unless signed by Licensor.
+
+4. Restrictions
+
+Except as expressly permitted by this License or a separate written
+agreement, You may not sublicense the Software for Commercial Use, remove
+notices, or use Licensor's names, logos, or trademarks to imply endorsement.
+This License does not grant patent, trademark, or rights to third-party
+materials.
+
+5. Termination
+
+This License and the permissions it grants terminate automatically if You
+materially violate its terms. Where the violation is capable of cure, the
+permissions will be reinstated if You cure it within thirty (30) days after
+becoming aware of the violation. Termination does not erase payment or
+reporting obligations accrued before termination.
+
+6. Disclaimer and limitation
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY LAW, LICENSOR WILL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+THIS LICENSE.
+
+7. General
+
+This License is the entire agreement regarding the permissions it grants.
+If any provision is unenforceable, it will be modified only as much as
+necessary to make it enforceable, and the remaining provisions will continue
+in effect. No waiver is effective unless in writing. Nothing in this License
+limits rights that cannot be limited under applicable law.
