@@ -12,6 +12,8 @@ animated route video, with geotagged photos shown as upper-right overlays.
 - Drop or import JPEG, HEIC, PNG, and TIFF photos as a batch.
 - Match photos with embedded GPS coordinates to the nearest GPX point.
 - Adjust the matching radius and review matched/unmatched photos.
+- Set each route's video duration from 10 seconds to 10 minutes; the total
+  export length is the sum of the route durations.
 - Export one H.264 MP4 with pitched satellite-flyover camera views, each route
   in sequence, and photo picture-in-picture.
 
@@ -48,10 +50,10 @@ view with satellite imagery.
   yet exposed for selection.
 - Photo matching is nearest-point based, and the 3D camera preview/export use
   MapKit's available terrain and flyover map imagery.
-- Video duration is estimated from route distance; there are no output quality
-  controls yet. Each route is capped at one minute, and map imagery is fetched
-  several times per second while 12 fps video is composed, so export speed
-  depends on MapKit and network response time.
+- Initial video duration is suggested from route distance, but can be adjusted
+  per route. Longer durations require more map captures and increase export
+  time; map imagery is fetched several times per second while 12 fps video is
+  composed, so export speed depends on MapKit and network response time.
 - Projects are not persisted between launches.
 
 See the [product and engineering plan](./docs/PLAN.md) for the broader roadmap.

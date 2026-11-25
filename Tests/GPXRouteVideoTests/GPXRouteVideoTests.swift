@@ -33,7 +33,7 @@ final class GPXRouteVideoTests: XCTestCase {
         XCTAssertThrowsError(try GPXParser.parse(url: file))
     }
 
-    func testVideoDurationStaysWithinPreviewBounds() {
+    func testSuggestedVideoDurationStaysWithinPreviewBounds() {
         let shortRoute = RouteActivity(
             name: "short",
             sport: .cycling,
@@ -56,6 +56,36 @@ final class GPXRouteVideoTests: XCTestCase {
 
         XCTAssertEqual(shortRoute.videoDuration, 10)
         XCTAssertEqual(longRoute.videoDuration, 60)
+    }
+
+    func testVideoDurationCanBeCustomizedWithinSupportedBounds() {
+        let route = RouteActivity(
+            name: "custom",
+            sport: .cycling,
+            points: [RoutePoint(
+                coordinate: CLLocationCoordinate2D(latitude: 47, longitude: 8),
+                elevation: nil,
+                timestamp: nil
+            )],
+            videoDuration: 125
+        )
+
+        XCTAssertEqual(route.videoDuration, 125)
+        XCTAssertEqual(RouteActivity.minimumVideoDuration, 10)
+        XCTAssertEqual(RouteActivity.maximumVideoDuration, 600)
+    }
+
+    func testVideoDurationInputIsClampedToSupportedBounds() {
+        let point = RoutePoint(
+            coordinate: CLLocationCoordinate2D(latitude: 47, longitude: 8),
+            elevation: nil,
+            timestamp: nil
+        )
+        let tooShort = RouteActivity(name: "short", sport: .running, points: [point], videoDuration: 1)
+        let tooLong = RouteActivity(name: "long", sport: .running, points: [point], videoDuration: 900)
+
+        XCTAssertEqual(tooShort.videoDuration, RouteActivity.minimumVideoDuration)
+        XCTAssertEqual(tooLong.videoDuration, RouteActivity.maximumVideoDuration)
     }
 
     func testCameraStylesIncludeThreePerspectivesWithForwardFollowAsRecommended() {

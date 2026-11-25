@@ -50,8 +50,9 @@ the camera reaches their matched route location.
   closest point on a route segment.
 - Routes from one GPX file are treated as one continuous sequence; separate
   track/segment selection is not exposed yet.
-- Export duration uses a sport-based estimated speed and an activity minimum;
-  users cannot adjust duration or codec settings yet.
+- Export duration is initially estimated from route distance, then adjustable
+  per route from 10 seconds to 10 minutes. Total export length is the sum of
+  route durations; longer videos take longer to render.
 - Export now captures pitched terrain/flyover views several times per second
   and composes video at 12 fps. Capture speed and 3D imagery coverage depend on
   MapKit, network access, and location; validate quality, attribution, and

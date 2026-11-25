@@ -86,9 +86,23 @@ struct RouteActivity: Identifiable {
     let name: String
     var sport: Sport
     let points: [RoutePoint]
+    var videoDuration: Double
 
     var distance: CLLocationDistance { points.last?.distanceFromStart ?? 0 }
-    var videoDuration: Double { max(10, min(60, 10 + distance / 300)) }
+
+    static let minimumVideoDuration: Double = 10
+    static let maximumVideoDuration: Double = 600
+
+    init(name: String, sport: Sport, points: [RoutePoint], videoDuration: Double? = nil) {
+        self.name = name
+        self.sport = sport
+        self.points = points
+        let suggestedDuration = max(Self.minimumVideoDuration, min(60, 10 + (points.last?.distanceFromStart ?? 0) / 300))
+        self.videoDuration = min(
+            Self.maximumVideoDuration,
+            max(Self.minimumVideoDuration, videoDuration ?? suggestedDuration)
+        )
+    }
 }
 
 struct GeoPhoto: Identifiable {

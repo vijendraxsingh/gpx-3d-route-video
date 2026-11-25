@@ -47,6 +47,9 @@ final class RouteProject: ObservableObject {
     @Published var previewProgress = 0.0
 
     var routeDistance: CLLocationDistance { activities.reduce(0) { $0 + $1.distance } }
+    var totalVideoDuration: Double {
+        activities.filter { $0.points.count > 1 }.reduce(0) { $0 + $1.videoDuration }
+    }
 
     func importGPX(_ urls: [URL]) {
         var added = 0
@@ -214,6 +217,9 @@ struct ContentView: View {
         .onChange(of: project.cameraStyle) { _, _ in
             cameraPosition = .camera(cameraForProgress(project.previewProgress))
         }
+        .onChange(of: project.totalVideoDuration) { _, _ in
+            cameraPosition = .camera(cameraForProgress(project.previewProgress))
+        }
         .onChange(of: project.matchingRadius) { _, _ in project.updatePhotoMatches() }
         .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
     }
@@ -308,7 +314,8 @@ struct ContentView: View {
                 HStack {
                     Text("GPX Routes").font(.headline)
                     Spacer()
-                    Text("\(project.activities.count)").font(.caption).foregroundStyle(.secondary)
+                    Text("\(project.activities.count) · \(formatDuration(project.totalVideoDuration)) total")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 if project.activities.isEmpty {
                     Text("Import or drop multiple GPX files here.")
@@ -329,6 +336,13 @@ struct ContentView: View {
                             Text(String(format: "%.1f km", activity.distance / 1_000))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
+                        Stepper(
+                            "Video: \(formatDuration(activity.videoDuration))",
+                            value: $activity.videoDuration,
+                            in: RouteActivity.minimumVideoDuration...RouteActivity.maximumVideoDuration,
+                            step: 10
+                        )
+                        .font(.caption)
                     }
                     .padding(8)
                     .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
@@ -420,14 +434,15 @@ struct ContentView: View {
     }
 
     private func cameraForProgress(_ progress: Double) -> MapCamera {
-        guard !project.activities.isEmpty else {
+        let activities = project.activities.filter { $0.points.count > 1 }
+        guard !activities.isEmpty else {
             return MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0), distance: 50_000, heading: 0, pitch: 55)
         }
-        let totalDuration = project.activities.reduce(into: 0.0) { $0 += $1.videoDuration }
+        let totalDuration = activities.reduce(into: 0.0) { $0 += $1.videoDuration }
         var elapsedBeforeActivity = 0.0
-        var selected = project.activities[0]
+        var selected = activities[0]
         var localProgress = 0.0
-        for activity in project.activities {
+        for activity in activities {
             selected = activity
             let localElapsed = totalDuration * progress - elapsedBeforeActivity
             localProgress = min(1, max(0, localElapsed / activity.videoDuration))
@@ -447,6 +462,11 @@ struct ContentView: View {
             heading: heading,
             pitch: project.cameraStyle.pitch
         )
+    }
+
+    private func formatDuration(_ duration: Double) -> String {
+        let seconds = Int(duration)
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
     private func mapBearing(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> CLLocationDirection {
