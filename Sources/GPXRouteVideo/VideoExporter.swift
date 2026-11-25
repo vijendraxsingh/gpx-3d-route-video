@@ -8,7 +8,12 @@ enum VideoExporter {
     private struct CapturedMap {
         let activity: RouteActivity
         let mapImage: CGImage
-        let routePoints: [CGPoint]
+        let routePoints: [ProjectedRoutePoint]
+    }
+
+    private struct ProjectedRoutePoint {
+        let routeIndex: Int
+        let point: CGPoint
     }
 
     private struct RoutePosition {
@@ -112,11 +117,11 @@ enum VideoExporter {
             )
             let bearingStart = position(
                 on: activity.points,
-                at: max(0, cameraDistance - 60)
+                at: max(0, cameraDistance - 300)
             )
             let bearingEnd = position(
                 on: activity.points,
-                at: min(activity.distance, cameraDistance + 180)
+                at: min(activity.distance, cameraDistance + 500)
             )
             let bearing = heading(from: bearingStart.coordinate, to: bearingEnd.coordinate)
             let mapSnapshot = try await snapshot(
@@ -129,15 +134,21 @@ enum VideoExporter {
             guard let image = mapSnapshot.image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
                 throw ExportError.cannotCreateSnapshot
             }
-            let routeStride = max(1, visibleRouteIndex / 1_500)
-            var routePoints = stride(from: 0, to: visibleRouteIndex, by: routeStride).map { index in
+            let routeStride = max(1, activity.points.count / 2_000)
+            var routePoints = stride(from: 0, to: activity.points.count, by: routeStride).map { index in
                 let mapPoint = mapSnapshot.point(for: activity.points[index].coordinate)
-                return CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+                return ProjectedRoutePoint(
+                    routeIndex: index,
+                    point: CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+                )
             }
-            let lastIndex = visibleRouteIndex - 1
-            if visibleRouteIndex > 0, lastIndex % routeStride != 0 {
+            let lastIndex = activity.points.count - 1
+            if lastIndex >= 0, lastIndex % routeStride != 0 {
                 let mapPoint = mapSnapshot.point(for: activity.points[lastIndex].coordinate)
-                routePoints.append(CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y))
+                routePoints.append(ProjectedRoutePoint(
+                    routeIndex: lastIndex,
+                    point: CGPoint(x: mapPoint.x, y: CGFloat(height) - mapPoint.y)
+                ))
             }
             let capturedMap = CapturedMap(
                 activity: activity,
@@ -149,7 +160,7 @@ enum VideoExporter {
             guard let buffer = makePixelBuffer(
                 capturedMap: capturedMap,
                 cameraPoint: cameraPoint,
-                visiblePointCount: routePoints.count,
+                visibleRouteIndex: visibleRouteIndex,
                 visibleDistance: targetDistance,
                 photos: preparedPhotos,
                 width: width,
@@ -252,7 +263,7 @@ enum VideoExporter {
     private static func makePixelBuffer(
         capturedMap: CapturedMap,
         cameraPoint: CGPoint,
-        visiblePointCount: Int,
+        visibleRouteIndex: Int,
         visibleDistance: CLLocationDistance,
         photos: [PreparedPhoto],
         width: Int,
@@ -284,22 +295,38 @@ enum VideoExporter {
         context.scaleBy(x: zoom, y: zoom)
         context.draw(capturedMap.mapImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
-        if visiblePointCount > 1 {
-            context.setStrokeColor(capturedMap.activity.sport.color.cgColor)
-            context.setLineWidth(7)
+        if capturedMap.routePoints.count > 1 {
             context.setLineCap(.round)
             context.setLineJoin(.round)
             context.beginPath()
-            let pointStride = max(1, capturedMap.routePoints.count / 1_500)
-            for index in stride(from: 0, to: visiblePointCount, by: pointStride) {
-                let point = capturedMap.routePoints[index]
-                if index == 0 { context.move(to: point) }
-                else { context.addLine(to: point) }
+            for (index, routePoint) in capturedMap.routePoints.enumerated() {
+                if index == 0 { context.move(to: routePoint.point) }
+                else { context.addLine(to: routePoint.point) }
             }
-            if (visiblePointCount - 1) % pointStride != 0 {
-                context.addLine(to: capturedMap.routePoints[visiblePointCount - 1])
-            }
+            context.setStrokeColor(NSColor.black.withAlphaComponent(0.9).cgColor)
+            context.setLineWidth(12)
             context.strokePath()
+
+            context.beginPath()
+            for (index, routePoint) in capturedMap.routePoints.enumerated() {
+                if index == 0 { context.move(to: routePoint.point) }
+                else { context.addLine(to: routePoint.point) }
+            }
+            context.setStrokeColor(NSColor.white.cgColor)
+            context.setLineWidth(8)
+            context.strokePath()
+
+            let traversedPoints = capturedMap.routePoints.filter { $0.routeIndex <= visibleRouteIndex }
+            if traversedPoints.count > 1 {
+                context.beginPath()
+                for (index, routePoint) in traversedPoints.enumerated() {
+                    if index == 0 { context.move(to: routePoint.point) }
+                    else { context.addLine(to: routePoint.point) }
+                }
+                context.setStrokeColor(capturedMap.activity.sport.color.cgColor)
+                context.setLineWidth(5)
+                context.strokePath()
+            }
         }
         context.restoreGState()
 

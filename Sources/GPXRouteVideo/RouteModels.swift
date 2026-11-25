@@ -58,17 +58,17 @@ enum CameraStyle: String, CaseIterable, Identifiable, Equatable {
 
     var distance: CLLocationDistance {
         switch self {
-        case .forwardFollow: 1_800
-        case .firstPerson: 650
-        case .chase: 3_500
+        case .forwardFollow: 2_800
+        case .firstPerson: 1_100
+        case .chase: 5_000
         }
     }
 
     var pitch: CGFloat {
         switch self {
-        case .forwardFollow: 72
-        case .firstPerson: 82
-        case .chase: 58
+        case .forwardFollow: 65
+        case .firstPerson: 76
+        case .chase: 52
         }
     }
 

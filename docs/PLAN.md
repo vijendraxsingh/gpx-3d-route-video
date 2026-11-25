@@ -59,6 +59,9 @@ the camera reaches their matched route location.
   Capture speed and 3D imagery coverage depend on MapKit, network access, and
   location; validate quality, attribution, and provider usage terms before
   public release.
+- Export overlays the complete route with a high-contrast stroke and highlights
+  the traversed portion in the activity color. Camera zoom and pitch are tuned
+  wider/lower to reduce abrupt terrain movement.
 - Export retries an unavailable flyover capture with satellite imagery, and
   reports a visible failure status if MapKit cannot provide either map view.
 - The camera simulates an athlete's route perspective, but does not render a
