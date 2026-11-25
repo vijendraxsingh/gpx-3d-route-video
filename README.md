@@ -39,6 +39,8 @@ MapKit terrain imagery. Choose **Forward Follow (Recommended)**, **First
 Person**, or **Chase Camera** in the preview header. Camera views are captured
 four times per second and composed into 12 fps video. This simulates a moving
 map camera; it does not render an athlete, bicycle, or other sports equipment.
+If MapKit cannot provide flyover imagery for a capture, export retries that
+view with satellite imagery.
 
 ## Current MVP limitations
 

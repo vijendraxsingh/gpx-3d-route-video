@@ -56,6 +56,8 @@ the camera reaches their matched route location.
   and composes video at 12 fps. Capture speed and 3D imagery coverage depend on
   MapKit, network access, and location; validate quality, attribution, and
   provider usage terms before public release.
+- Export retries an unavailable flyover capture with satellite imagery, and
+  reports a visible failure status if MapKit cannot provide either map view.
 - The camera simulates an athlete's route perspective, but does not render a
   person, bicycle, or other sports equipment.
 - Project persistence, offline map handling, photo repositioning, export

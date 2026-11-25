@@ -187,6 +187,43 @@ enum VideoExporter {
         width: Int,
         height: Int
     ) async throws -> MKMapSnapshotter.Snapshot {
+        do {
+            return try await snapshot(
+                center: center,
+                heading: heading,
+                cameraStyle: cameraStyle,
+                width: width,
+                height: height,
+                mapType: .satelliteFlyover
+            )
+        } catch let flyoverError {
+            try Task.checkCancellation()
+            do {
+                return try await snapshot(
+                    center: center,
+                    heading: heading,
+                    cameraStyle: cameraStyle,
+                    width: width,
+                    height: height,
+                    mapType: .satellite
+                )
+            } catch let satelliteError {
+                try Task.checkCancellation()
+                throw ExportError.mapSnapshotFailed(
+                    "Flyover: \(flyoverError.localizedDescription) Satellite: \(satelliteError.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    private static func snapshot(
+        center: CLLocationCoordinate2D,
+        heading: CLLocationDirection,
+        cameraStyle: CameraStyle,
+        width: Int,
+        height: Int,
+        mapType: MKMapType
+    ) async throws -> MKMapSnapshotter.Snapshot {
         let options = MKMapSnapshotter.Options()
         options.camera = MKMapCamera(
             lookingAtCenter: center,
@@ -195,7 +232,7 @@ enum VideoExporter {
             heading: heading
         )
         options.size = CGSize(width: width, height: height)
-        options.mapType = .satelliteFlyover
+        options.mapType = mapType
         options.showsBuildings = true
         let snapshotter = MKMapSnapshotter(options: options)
         return try await withTaskCancellationHandler {
@@ -367,6 +404,7 @@ enum ExportError: LocalizedError {
     case cannotAppendFrame
     case cannotFinish
     case cannotCreateSnapshot
+    case mapSnapshotFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -376,6 +414,8 @@ enum ExportError: LocalizedError {
         case .cannotAppendFrame: "A video frame could not be encoded."
         case .cannotFinish: "The MP4 file could not be finalized."
         case .cannotCreateSnapshot: "The map renderer returned no image."
+        case .mapSnapshotFailed(let reason):
+            "Map imagery could not be loaded for this route. Check your internet connection and try again. MapKit error: \(reason)"
         }
     }
 }

@@ -141,6 +141,7 @@ final class RouteProject: ObservableObject {
                 status = "Exported video to \(url.path)."
             } catch {
                 errorMessage = error.localizedDescription
+                status = "Export failed: \(error.localizedDescription)"
             }
             isExporting = false
         }
