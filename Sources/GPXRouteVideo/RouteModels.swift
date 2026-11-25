@@ -41,6 +41,46 @@ enum Sport: String, CaseIterable, Identifiable {
     }
 }
 
+enum CameraStyle: String, CaseIterable, Identifiable, Equatable {
+    case forwardFollow
+    case firstPerson
+    case chase
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .forwardFollow: "Forward Follow (Recommended)"
+        case .firstPerson: "First Person"
+        case .chase: "Chase Camera"
+        }
+    }
+
+    var distance: CLLocationDistance {
+        switch self {
+        case .forwardFollow: 1_800
+        case .firstPerson: 650
+        case .chase: 3_500
+        }
+    }
+
+    var pitch: CGFloat {
+        switch self {
+        case .forwardFollow: 72
+        case .firstPerson: 82
+        case .chase: 58
+        }
+    }
+
+    var lookAhead: CLLocationDistance {
+        switch self {
+        case .forwardFollow: 450
+        case .firstPerson: 180
+        case .chase: 0
+        }
+    }
+}
+
 struct RouteActivity: Identifiable {
     let id = UUID()
     let name: String

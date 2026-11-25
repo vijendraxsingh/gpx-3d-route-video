@@ -39,6 +39,7 @@ final class RouteProject: ObservableObject {
     @Published var activities: [RouteActivity] = []
     @Published var photos: [GeoPhoto] = []
     @Published var matchingRadius: Double = 100
+    @Published var cameraStyle: CameraStyle = .forwardFollow
     @Published var status = "Import a GPX track to get started."
     @Published var errorMessage: String?
     @Published var isExporting = false
@@ -129,6 +130,7 @@ final class RouteProject: ObservableObject {
                     activities: activities,
                     photos: photos,
                     matchingRadius: matchingRadius,
+                    cameraStyle: cameraStyle,
                     to: url
                 ) { value, message in
                     Task { @MainActor in
@@ -208,6 +210,9 @@ struct ContentView: View {
         .onChange(of: project.previewProgress) { _, progress in
             cameraPosition = .camera(cameraForProgress(progress))
         }
+        .onChange(of: project.cameraStyle) { _, _ in
+            cameraPosition = .camera(cameraForProgress(project.previewProgress))
+        }
         .onChange(of: project.matchingRadius) { _, _ in project.updatePhotoMatches() }
         .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
     }
@@ -241,6 +246,14 @@ struct ContentView: View {
             HStack {
                 Text("3D Route Preview").font(.headline)
                 Spacer()
+                Picker("Camera", selection: $project.cameraStyle) {
+                    ForEach(CameraStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .labelsHidden()
+                .accessibilityLabel("Camera perspective")
+                .help("Choose the camera perspective for the preview and export")
                 if project.routeDistance > 0 {
                     Text(String(format: "%.1f km", project.routeDistance / 1_000))
                         .foregroundStyle(.secondary)
@@ -261,7 +274,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .mapStyle(.standard(elevation: .realistic))
+            .mapStyle(.hybrid(elevation: .realistic))
             .overlay {
                 if project.activities.isEmpty {
                     ContentUnavailableView(
@@ -421,23 +434,32 @@ struct ContentView: View {
             elapsedBeforeActivity += activity.videoDuration
         }
         let localDistance = selected.distance * localProgress
-        let index = selected.points.firstIndex { $0.distanceFromStart >= localDistance } ?? selected.points.count - 1
+        let currentIndex = selected.points.firstIndex { $0.distanceFromStart >= localDistance } ?? selected.points.count - 1
+        let cameraDistance = min(selected.distance, localDistance + project.cameraStyle.lookAhead)
+        let cameraIndex = selected.points.firstIndex { $0.distanceFromStart >= cameraDistance } ?? selected.points.count - 1
+        let heading = currentIndex + 1 < selected.points.count
+            ? mapBearing(from: selected.points[currentIndex].coordinate, to: selected.points[currentIndex + 1].coordinate)
+            : 0
         return MapCamera(
-            centerCoordinate: selected.points[index].coordinate,
-            distance: max(2_000, min(80_000, project.routeDistance * 0.8)),
-            heading: 0,
-            pitch: 55
+            centerCoordinate: selected.points[cameraIndex].coordinate,
+            distance: project.cameraStyle.distance,
+            heading: heading,
+            pitch: project.cameraStyle.pitch
         )
     }
 
+    private func mapBearing(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> CLLocationDirection {
+        let latitude1 = start.latitude * .pi / 180
+        let latitude2 = end.latitude * .pi / 180
+        let deltaLongitude = (end.longitude - start.longitude) * .pi / 180
+        let y = sin(deltaLongitude) * cos(latitude2)
+        let x = cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(deltaLongitude)
+        return atan2(y, x) * 180 / .pi
+    }
+
     private func updateCamera() {
-        let coordinates = project.activities.flatMap { $0.points.map(\.coordinate) }
-        guard !coordinates.isEmpty else { return }
-        let rect = coordinates.reduce(MKMapRect.null) { partial, coordinate in
-            let point = MKMapPoint(coordinate)
-            return partial.union(MKMapRect(x: point.x, y: point.y, width: 0, height: 0))
-        }
-        cameraPosition = .region(MKCoordinateRegion(rect))
+        guard !project.activities.isEmpty else { return }
+        cameraPosition = .camera(cameraForProgress(project.previewProgress))
     }
 
     private func handleImport(_ result: Result<[URL], Error>, action: ([URL]) -> Void) {

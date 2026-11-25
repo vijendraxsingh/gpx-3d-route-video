@@ -57,4 +57,14 @@ final class GPXRouteVideoTests: XCTestCase {
         XCTAssertEqual(shortRoute.videoDuration, 10)
         XCTAssertEqual(longRoute.videoDuration, 60)
     }
+
+    func testCameraStylesIncludeThreePerspectivesWithForwardFollowAsRecommended() {
+        XCTAssertEqual(
+            CameraStyle.allCases,
+            [.forwardFollow, .firstPerson, .chase]
+        )
+        XCTAssertEqual(CameraStyle.forwardFollow.title, "Forward Follow (Recommended)")
+        XCTAssertGreaterThan(CameraStyle.firstPerson.pitch, CameraStyle.chase.pitch)
+        XCTAssertGreaterThan(CameraStyle.chase.distance, CameraStyle.firstPerson.distance)
+    }
 }
