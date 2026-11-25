@@ -18,14 +18,20 @@ animated route video, with geotagged photos shown as upper-right overlays.
 
 Requires macOS 14 or newer and Xcode command line tools.
 
+### Run in Xcode
+
+Open `RouteStudio.xcodeproj`, choose the **RouteStudio** scheme and **My Mac**
+as the run destination, then click **Run**.
+
+### Run with Swift Package Manager
+
 ```sh
 swift build
 swift run
 ```
 
-Open the folder in Xcode to run it as a regular macOS app. Map rendering and
-video export require network access to MapKit map data. Map attribution remains
-visible in exported frames.
+Map rendering and video export require network access to MapKit map data. Map
+attribution remains visible in exported frames.
 
 ## Current MVP limitations
 
